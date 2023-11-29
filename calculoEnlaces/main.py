@@ -3,8 +3,8 @@ from tkinter import messagebox
 from tkinter import ttk
 import math
 import functions as func
-import traces as trc
 import pandas as pd
+import math
 
 
 def toggle_trace():
@@ -19,26 +19,21 @@ def toggle_trace():
             for entry in trace_entries:
                 entry.grid_remove()
 
-def load_defaults():
-    df = df_terrain_stations + df_links + df_satelite
-    for i, entry in enumerate(entries):
-        entry.delete(0, tk.END)
-        entry.insert(0, df.iloc[i, 0])
-
 def calculate():
     try:
         # Realiza tus cálculos aquí
         # Por ahora, solo recopilamos los valores ingresados
         values = [float(entry.get().replace(',', '.')) for entry in entries]
         values.append(modulation_var.get())
-        messagebox.showinfo("Valores ingresados", f"Los valores ingresados son {values}")
+        #messagebox.showinfo("Valores ingresados", f"Los valores ingresados son {values}")
 
         # Calcular elevación y azimut de ambas estaciones terrenas con respecto a la posición del satélite
-        sat_long = values[1]
-        est1_long = values[3]
-        est1_lat = values[4]
-        est2_long = values[6]
-        est2_lat = values[7]
+
+        sat_long = math.radians(values[31])
+        est1_long = math.radians(values[0])
+        est1_lat = math.radians(values[1])
+        est2_long = math.radians(values[3])
+        est2_lat = math.radians(values[4])
 
         # Cálculo de la elevación
         elev_est1 = func.calculate_elevation(est1_lat, est1_long, sat_long, sat_long)
@@ -48,20 +43,20 @@ def calculate():
         azimut_est1 = func.calculate_azimuth(est1_lat, est1_long, sat_long, sat_long)
         azimut_est2 = func.calculate_azimuth(est2_lat, est2_long, sat_long, sat_long)
         
-        pot_saturacion_ascendente = values[9]
-        perdidas_antena_ascendente = values[10]
+        pot_saturacion_ascendente = values[14]
+        perdidas_antena_ascendente = values[15]
         Xmtr_pow_ascendente = func.Xmtr_pow(pot_saturacion_ascendente, perdidas_antena_ascendente)
 
         # revisar indices values
-        diametro_antena_ascendente = values[13]
-        frec_ascendente_ascendente = values[14]
+        diametro_antena_ascendente = values[12]
+        frec_ascendente_ascendente = values[6]
 
         Xmtr_gain_ascendente = func.calculate_Xmtr_gain(pot_saturacion_ascendente, diametro_antena_ascendente, frec_ascendente_ascendente)
 
         backout_ascendente= values[15]
         pire_ascendente = func.calculate_pire(Xmtr_pow_ascendente, Xmtr_gain_ascendente, backout_ascendente)
 
-        messagebox.showinfo("Resultados", f"Elevación Estación 1: {elev_est1}\nAzimut Estación 1: {azimut_est1}\nElevación Estación 2: {elev_est2}\nAzimut Estación 2: {azimut_est2}\nXmtr_pow: {Xmtr_pow}")
+       # messagebox.showinfo("Resultados", f"Elevación Estación 1: {elev_est1}\nAzimut Estación 1: {azimut_est1}\nElevación Estación 2: {elev_est2}\nAzimut Estación 2: {azimut_est2}\nXmtr_pow: {Xmtr_pow_ascendente}")
 
         # Calcular traza del satélite
         ground_station = {
@@ -78,15 +73,57 @@ def calculate():
             "argument_of_perigee": values[12],
             "true_anomaly": values[13]
         }
+        
+        #crea la ventana de resultados
+        result_window = tk.Toplevel(root)
+        
+        # Crea los frames para cada grupo de resultados
+        frame1 = tk.Frame(result_window)
+        frame2 = tk.Frame(result_window)
+        frame3 = tk.Frame(result_window)
 
-        satellite_Trace = trc.calculate_satellite_trace(ground_station, satellite)
-        trc.plot_satellite_trace(ground_station, satellite_Trace)
+        # Coloca los frames en la ventana de resultados
+        frame1.pack(side="left", fill="both", expand=True)
+        frame2.pack(side="left", fill="both", expand=True)
+        frame3.pack(side="left", fill="both", expand=True)
+
+        # Crea los Treeviews en cada frame
+        tree1 = ttk.Treeview(frame1)
+        tree2 = ttk.Treeview(frame2)
+        tree3 = ttk.Treeview(frame3)
+
+        # Configura los Treeviews
+        for tree in [tree1, tree2, tree3]:
+            tree["columns"] = ("value")
+            tree.column("#0", width=150, minwidth=150)
+            tree.column("value", width=150, minwidth=150)
+            tree.heading("#0", text="Parámetro")
+            tree.heading("value", text="Valor")
+            tree.pack(fill="both", expand=True)
+       
+
+        # Agregar los parámetros calculados al Treeview
+        tree1.insert("", "end", text="Elevación Estación 1", values=(elev_est1,))
+        tree1.insert("", "end", text="Azimut Estación 1", values=(azimut_est1,))
+        tree1.insert("", "end", text="Elevación Estación 2", values=(elev_est2,))
+        tree1.insert("", "end", text="Azimut Estación 2", values=(azimut_est2,))
+        tree1.insert("", "end", text="Xmtr_pow", values=(Xmtr_pow_ascendente,))
+
+        #alinea el tree a la izquierda
+        tree1.pack(side="left", fill="both", expand=True)
+        #dale un titulo al tree view
+        result_window.title("Resultados")
+        #fale una anchura y altura al tree view
+        result_window.geometry("400x400")
+       # satellite_Trace = trc.calculate_satellite_trace(ground_station, satellite)
+        #trc.plot_satellite_trace(ground_station, satellite_Trace)
     except ValueError as e:
         messagebox.showerror("Error", f"Entrada inválida: {str(e)}")
 
 root = tk.Tk()
 root.title("Formulario de entrada")
-
+#maximiza la ventana root
+root.state('zoomed')
 # Crear un frame para el contenido del formulario
 frame = ttk.Frame(root)
 frame.pack(fill="both", expand=True)
@@ -153,14 +190,14 @@ labels_links = {
 }
 
 labels_satelite = {
-    "SATÉLITE": [-31],
-    "Longitud (rad)": [],
-    "semimajor_axis (Km)": [],
-    "eccentricity": [],
-    "inclination (rad)": [],
-    "RAAN (rad)": [],
-    "argument_of_perigee (rad)": [],
-    "true_anomaly (rad)": []
+    "SATÉLITE": [],
+    "Longitud (rad)": [-31],
+    "semimajor_axis (Km)": [0],
+    "eccentricity": [0],
+    "inclination (rad)": [0],
+    "RAAN (rad)": [0],
+    "argument_of_perigee (rad)": [0],
+    "true_anomaly (rad)": [0]
 }
 df_terrain_stations = pd.DataFrame.from_dict(labels_terrain_stations, orient="index")
 df_links= pd.DataFrame.from_dict(labels_links, orient="index")
@@ -213,7 +250,8 @@ for i, label in enumerate(labels_satelite):
         label_widget.grid(row=i, column=4, padx=10, pady=5, sticky="w")
 
         entry = tk.Entry(scrollable_frame)
-        entry.insert(0, labels_satelite[label][0])
+        if len(labels_satelite[label]) > 0:
+            entry.insert(0, labels_satelite[label][0])
         entry.grid(row=i, column=5, padx=10, pady=5, sticky="w")
         entries.append(entry)
         if label != "Longitud (rad)":
@@ -230,8 +268,6 @@ for i, label in enumerate(labels_satelite):
 button = tk.Button(root, text="Calcular", command=calculate, font=("Arial", 12), bg="lightgreen")
 button.pack(pady=10)
 
-default_button = tk.Button(root, text="Cargar valores por defecto", command=load_defaults, font=("Arial", 12), bg="lightgreen")
-default_button.pack(pady=10)
 
 root.mainloop()
 
